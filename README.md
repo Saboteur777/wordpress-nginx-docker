@@ -1,48 +1,108 @@
-# wordpress-php-docker
+# wordpress-nginx-docker
 
-![Last commit](https://badgen.net/github/last-commit/Saboteur777/wordpress-php-docker)
+![Last commit](https://badgen.net/github/last-commit/Saboteur777/wordpress-nginx-docker)
 ![Docker Build mode](https://badgen.net/badge/docker%20build/automated)
-[![Docker layers count](https://images.microbadger.com/badges/image/webmenedzser/wordpress-php.svg)](https://microbadger.com/images/webmenedzser/wordpress-php)
-![Docker Pull count](https://badgen.net/docker/pulls/webmenedzser/wordpress-php)
+[![Docker layers count](https://images.microbadger.com/badges/image/webmenedzser/wordpress-nginx.svg)](https://microbadger.com/images/webmenedzser/wordpress-nginx)
+![Docker Pull count](https://badgen.net/docker/pulls/webmenedzser/wordpress-nginx)
 ![Keybase.io PGP](https://badgen.net/keybase/pgp/Saboteur777)
 
-**This Docker image aims to be as simple as possible to run WordPress - if you have special dependencies, define this image as a base in your Dockerfile (FROM: webmenedzser/wordpress-php:latest) and extend it as you like.**
+**This Docker image aims to be as simple as possible to run WordPress - if you have special dependencies, define this image as a base in your Dockerfile (FROM: webmenedzser/wordpress-nginx:latest) and extend it as you like.**
 
-The image will be based on the php:fpm-alpine image, which ships the latest stable PHP.
+The image will be based on the nginx:alpine image.
 
-Current PHP version is **7.3.2**
-
-### Change user and group of PHP
-You can change which user should run PHP - just build your image by extending this one, e.g.:
+### Change user and group of nginx
+You can change which user should run your webserver, just build your image by extending this one, e.g.:
 
 **Dockerfile**
 ```
-FROM: webmenedzser/wordpress-php:latest
+FROM: webmenedzser/wordpress-nginx:latest
 
 [...]
-RUN apk add shadow && usermod -u 1000 www-data && groupmod -g 1000 www-data
+RUN apk add shadow && usermod -u 1000 nginx && groupmod -g 1000 nginx
 [...]
 ```
 
-This will change both the UID and GID of `www-data` user (which is the default to run PHP) to 1000.
+This will change both the UID and GID of `nginx` user (which is the default to run nginx) to 1000.
 
-### Add custom PHP settings
-You can easily add new PHP settings to the image. Just place your `.ini` file in e.g. the `.docker/php` folder, and `COPY` it:
+### Service containing PHP named other than `php`
+
+In case your `docker-compose.yml` names the service containing PHP other than `php`, you have to change your upstream settings. You can do this by:
+- use `links` in your docker-compose.yml (thanks @bertoost for the tip! (^.^) )
+- override upstream setting with a file
+
+#### Use `links` in your docker-compose.yml
+Add `links` to your nginx service:
+
+**docker-compose.yml**
+```
+services:
+  web:
+    image: webmenedzser/wordpress-nginx:latest
+    links:
+      - trololo:php
+
+  trololo:
+    image: webmenedzser/wordpress-php:latest
+```
+This way you could reach your `trololo` service from the `web` service through the hostname `php`.
+
+#### Override upstream setting
+Just add a simple `.conf` file to your Dockerfile build process, with the following content (you should change `trololo` to the name of your PHP service, of course):
+
+**.docker/upstream-override.conf**
+```
+upstream _upstream {
+  server trololo:9000;
+}
+```
 
 **Dockerfile**
 ```
-FROM: webmenedzser/wordpress-php:latest
+FROM: webmenedzser/wordpress-nginx:latest
 
 [...]
-COPY .docker/php/settings-override.ini /usr/local/etc/php/conf.d/
+ADD .docker/upstream-override.conf /etc/nginx/upstream.conf
 [...]
 ```
-Opcache is enabled by default, so if you want to disable it (for local dev) you can do it with the method mentioned above:
 
-**disable-opcache.ini**
+### Add custom location rules
+> You can now add your custom location rules by mounting a folder containing your `.conf` files or by copying the files into `/etc/nginx/conf.d/locations.d/` folder. Example:
+
+**custom-rules/craft_assets_versioning.conf**
 ```
-opcache.enable = 0;
+# Simple Static Asset Versioning in WordPress
+# https://nystudio107.com/blog/simple-static-asset-versioning
+# Thanks Andrew!
+
+location ~* (.+)\.(?:\d+)\.(js|css|png|jpg|jpeg|gif|webp)$ {
+  try_files $uri $1.$2;
+}
 ```
+
+**Dockerfile**
+```
+[...]
+
+RUN mkdir /etc/nginx/conf.d/locations.d
+COPY custom-rules/craft_assets_versioning.conf /etc/nginx/conf.d/locations.d/craft_assets_versioning.conf
+
+[...]
+```
+
+##### OR
+
+**docker-compose.yml**
+```
+[...]
+
+web:
+    image: webmenedzser/wordpress-nginx:latest
+    volumes:
+      - ./custom-rules/:/etc/nginx/conf.d/locations.d/
+
+[...]
+```
+
 
 ### Example usage
 
@@ -58,12 +118,12 @@ services:
   web:
     image: webmenedzser/wordpress-nginx:latest
     volumes:
-      - ./:/var/www/html/
+      - ./:/var/www/
 
   php:
     image: webmenedzser/wordpress-php:latest
     volumes:
-      - ./:/var/www/html/
+      - ./:/var/www/
 
   database:
     image: mariadb:latest
@@ -71,4 +131,4 @@ services:
      - database_volume:/var/lib/mysql
 ```
 
-Sister image: [wordpress-nginx](https://github.com/Saboteur777/wordpress-nginx-docker)
+Sister image: [wordpress-php](https://github.com/Saboteur777/wordpress-php-docker)
