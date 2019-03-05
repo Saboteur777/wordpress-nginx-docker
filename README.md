@@ -1,9 +1,10 @@
 # wordpress-nginx-docker
 
-![Last commit](https://badgen.net/github/last-commit/Saboteur777/wordpress-nginx-docker)
-![Docker Build mode](https://badgen.net/badge/docker%20build/automated)
+![Docker Build status](https://img.shields.io/docker/cloud/build/webmenedzser/wordpress-nginx.svg)
+![Docker Build mode](https://img.shields.io/docker/cloud/automated/webmenedzser/wordpress-nginx.svg)
 [![Docker layers count](https://images.microbadger.com/badges/image/webmenedzser/wordpress-nginx.svg)](https://microbadger.com/images/webmenedzser/wordpress-nginx)
 ![Docker Pull count](https://badgen.net/docker/pulls/webmenedzser/wordpress-nginx)
+![Last commit](https://badgen.net/github/last-commit/Saboteur777/wordpress-nginx-docker)
 ![Keybase.io PGP](https://badgen.net/keybase/pgp/Saboteur777)
 
 **This Docker image aims to be as simple as possible to run WordPress - if you have special dependencies, define this image as a base in your Dockerfile (FROM: webmenedzser/wordpress-nginx:latest) and extend it as you like.**
@@ -83,7 +84,6 @@ location ~* (.+)\.(?:\d+)\.(js|css|png|jpg|jpeg|gif|webp)$ {
 ```
 [...]
 
-RUN mkdir /etc/nginx/conf.d/locations.d
 COPY custom-rules/craft_assets_versioning.conf /etc/nginx/conf.d/locations.d/craft_assets_versioning.conf
 
 [...]
